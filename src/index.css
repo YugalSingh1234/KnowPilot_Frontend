@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* Semantic color tokens. Components use these (bg-paper, text-muted, border-line...), never raw
+   palette colors, so light and dark mode (which follows the OS) both stay correct. */
+:root {
+  color-scheme: light;
+  --paper: #f5f5fa;
+  --surface: #ffffff;
+  --ink: #1c1b33;
+  --muted: #5f5e78;
+  --line: #e2e1ee;
+  --fill: #eeeef6;
+  --accent: #3730a3; /* deep indigo: buttons, user bubbles */
+  --accent-ink: #3730a3; /* accent-colored text and focus rings */
+  --ok: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: #100f26;
+    --surface: #191838;
+    --ink: #ecebfa;
+    --muted: #a3a2c2;
+    --line: #2c2b52;
+    --fill: #232249;
+    --accent: #4f46e5;
+    --accent-ink: #a5b4fc;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-fill: var(--fill);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+}
+
+@theme {
+  /* Headings only. Body text stays on the system font so Hindi renders natively everywhere. */
+  --font-display: "Anek Latin", ui-sans-serif, system-ui, sans-serif;
+  --animate-blink: blink 1.2s infinite both;
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.25; }
+    40% { opacity: 1; }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-paper text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent-ink;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:enabled:bg-accent/90;
+  }
+  .btn-quiet {
+    @apply text-ink hover:enabled:bg-fill;
+  }
+  .btn-danger {
+    @apply bg-red-700 text-white hover:enabled:bg-red-800;
+  }
+  /* text-base (16px) keeps iOS from zooming into focused inputs */
+  .input {
+    @apply h-11 w-full rounded-lg border border-line bg-surface px-3 text-base text-ink placeholder:text-muted focus-visible:outline-offset-0 aria-[invalid=true]:border-bad;
+  }
+  .panel {
+    @apply rounded-2xl border border-line bg-surface;
+  }
+}
