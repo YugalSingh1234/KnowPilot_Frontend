@@ -1,22 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router'
 import { api, clearToken, getToken } from '../api.js'
+import Assistant from './Assistant.jsx'
 import KnowledgeBase from './KnowledgeBase.jsx'
+import Usage from './Usage.jsx'
 
 const TABS = [
   ['kb', 'Knowledge base'],
   ['assistant', 'Assistant'],
   ['usage', 'Usage'],
 ]
-
-function Placeholder({ title, children }) {
-  return (
-    <div className="panel p-5 sm:p-6">
-      <h2 className="font-display text-lg font-semibold">{title}</h2>
-      <p className="mt-1.5 text-sm text-muted">{children}</p>
-    </div>
-  )
-}
 
 // Protected route: no token means /login. An expired token is caught by api() on its first 401.
 export default function Dashboard() {
@@ -77,10 +70,10 @@ function DashboardPage() {
           </section>
           <div className="flex flex-col gap-6">
             <section className={shown('assistant')}>
-              <Placeholder title="Assistant">Assistant link and embed code coming soon</Placeholder>
+              <Assistant />
             </section>
             <section className={shown('usage')}>
-              <Placeholder title="Usage">Usage stats coming soon</Placeholder>
+              <Usage />
             </section>
           </div>
         </div>

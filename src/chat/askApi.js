@@ -1,9 +1,10 @@
+import { api } from '../api.js'
 import { inr } from '../utils.js'
 
-// Flip to false once POST /api/ask is documented in the backend's docs/API_CONTRACT.md.
-export const USE_MOCK = true
+// true = canned replies below, for demos without the backend.
+export const USE_MOCK = false
 
-// Mock stand-ins until the assistant info endpoint (/api/assistant/{token}/info) is in the contract.
+// Mock-only data.
 export const ORG_NAME = 'Sunrise College'
 export const SUGGESTIONS = [
   'What is the refund policy for hostel fees?',
@@ -118,9 +119,13 @@ const NO_ANSWER = {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+export function getInfo(token) {
+  if (USE_MOCK) return Promise.resolve({ org_name: ORG_NAME, suggested_questions: SUGGESTIONS })
+  return api(`/api/assistant/${encodeURIComponent(token)}/info`)
+}
+
 export async function ask(token, question) {
-  // The real request shape isn't in the API contract yet, so it isn't guessed here.
-  if (!USE_MOCK) throw new Error('This assistant isn’t connected yet.')
+  if (!USE_MOCK) return api('/api/ask', { method: 'POST', body: { assistant_token: token, question } })
   await wait(1000)
   if (/eligib|scholarship|qualify/i.test(question)) return DECISION
   if (/refund|hostel|fee/i.test(question)) return ANSWER

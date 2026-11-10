@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router'
-import { ask, ORG_NAME, SUGGESTIONS } from './askApi.js'
+import { ask, getInfo } from './askApi.js'
 
 const MARKS = {
   TRUE: ['✓', 'Met', 'bg-ok/15 text-ok'],
@@ -12,7 +12,11 @@ const OUTCOMES = {
   NOT_ELIGIBLE: ['Not eligible', 'border-bad bg-bad/10 text-bad'],
   NEEDS_MORE_INFO: ['More details needed', 'border-warn bg-warn/10 text-warn'],
 }
-const KINDS = { system1: 'System 1', llm: 'LLM', retrieval: 'Retrieval', app: 'App' }
+const KINDS = { system1: 'System 1', llm: 'LLM', retrieval: 'Retrieval', fallback: 'Fallback' }
+const RETRYABLE = [0, 429, 503] // network, rate limit, AI/database busy
+
+// Numbers like 650000 -> 6,50,000; strings pass through.
+const show = (v) => (typeof v === 'number' ? v.toLocaleString('en-IN') : v)
 
 const cite = (ref) => `${ref.filename} — Page ${ref.page}`
 
@@ -49,12 +53,13 @@ function Verdict({ decision }) {
       <span className="font-display text-xl font-bold leading-none">{label}</span>
       <span className="text-sm">
         {met} of {decision.booleans.length} conditions met
+        {decision.score != null && ` · score ${decision.score}/100`}
       </span>
     </div>
   )
 }
 
-function HowDecided({ decision, trace }) {
+function HowDecided({ decision }) {
   return (
     <details className="group border-t border-line">
       <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-sm font-semibold text-accent-ink">
@@ -78,10 +83,10 @@ function HowDecided({ decision, trace }) {
                   </p>
                   <p className="mt-0.5 flex flex-wrap gap-x-3 text-muted">
                     <span>
-                      Yours: <span className="text-ink">{b.user_value ?? 'not given'}</span>
+                      Yours: <span className="text-ink">{show(b.user_value) ?? 'not given'}</span>
                     </span>
                     <span>
-                      Required: <span className="text-ink">{b.required_value}</span>
+                      Required: <span className="text-ink">{show(b.required_value)}</span>
                     </span>
                   </p>
                   <p className="mt-0.5 text-xs text-muted wrap-anywhere">{cite(b.source)}</p>
@@ -90,18 +95,27 @@ function HowDecided({ decision, trace }) {
             )
           })}
         </ul>
-        {trace?.length > 0 && (
-          <ol aria-label="Steps" className="space-y-1 border-t border-line pt-3 text-xs text-muted">
-            {trace.map((t, i) => (
-              <li key={i} className="flex gap-3">
-                <span className="flex-1">{t.step}</span>
-                <span>{KINDS[t.kind] ?? t.kind}</span>
-                <span className="w-16 text-right tabular-nums">{t.ms} ms</span>
-              </li>
-            ))}
-          </ol>
-        )}
       </div>
+    </details>
+  )
+}
+
+function Steps({ trace }) {
+  return (
+    <details className="group border-t border-line">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2.5 text-xs font-medium text-muted">
+        <Chevron />
+        Processing steps
+      </summary>
+      <ol className="space-y-1 px-4 pb-3 text-xs text-muted">
+        {trace.map((t, i) => (
+          <li key={i} className="flex items-center gap-3">
+            <span className="flex-1 wrap-anywhere">{t.step}</span>
+            <span className="rounded bg-fill px-1.5 py-0.5">{KINDS[t.kind] ?? t.kind}</span>
+            <span className="w-16 text-right tabular-nums">{Math.round(t.ms)} ms</span>
+          </li>
+        ))}
+      </ol>
     </details>
   )
 }
@@ -115,6 +129,16 @@ function AssistantMessage({ reply }) {
         className={`overflow-hidden rounded-2xl rounded-tl-md border bg-surface ${noAnswer ? 'border-dashed border-muted/50' : 'border-line'}`}
       >
         {decision && <Verdict decision={decision} />}
+        {noAnswer && (
+          <span className="mx-4 mt-3 inline-block rounded-full bg-fill px-2.5 py-0.5 text-xs font-medium text-muted">
+            Not in documents
+          </span>
+        )}
+        {reply.status === 'passages_only' && (
+          <p className="border-l-4 border-warn bg-warn/10 px-4 py-2 text-sm font-medium text-warn">
+            AI busy, showing relevant passages
+          </p>
+        )}
         <p
           lang={reply.language === 'hi' ? 'hi' : 'en'}
           className={`px-4 py-3 leading-relaxed whitespace-pre-line ${noAnswer ? 'text-muted' : ''}`}
@@ -131,7 +155,8 @@ function AssistantMessage({ reply }) {
             </ul>
           </div>
         )}
-        {decision && <HowDecided decision={decision} trace={reply.trace} />}
+        {decision && <HowDecided decision={decision} />}
+        {reply.trace?.length > 0 && <Steps trace={reply.trace} />}
       </div>
       {reply.references.length > 0 && <References refs={reply.references} />}
     </div>
@@ -159,34 +184,59 @@ export default function ChatPage() {
   const [messages, setMessages] = useState([]) // {role: 'user' | 'error', text} or {role: 'assistant', reply}
   const [input, setInput] = useState('')
   const [waiting, setWaiting] = useState(false)
+  const [info, setInfo] = useState(null) // {org_name, suggested_questions}
+  const [inactive, setInactive] = useState(false)
   const log = useRef(null)
 
   useEffect(() => {
+    getInfo(token).then(setInfo, (err) => {
+      if (err.status === 404) setInactive(true)
+      else setInfo({ org_name: '', suggested_questions: [] }) // still let them ask
+    })
+  }, [token])
+
+  useEffect(() => {
+    if (!log.current) return
     // Scroll only the conversation, never the page around an embed.
     log.current.scrollTop = log.current.scrollHeight
   }, [messages, waiting])
 
-  async function send(text) {
+  // retry: re-ask after an error without repeating the user's bubble
+  async function send(text, retry = false) {
     const question = text.trim()
     if (!question || waiting) return
-    setMessages((m) => [...m, { role: 'user', text: question }])
-    setInput('')
+    setMessages((m) => (retry ? m.slice(0, -1) : [...m, { role: 'user', text: question }]))
+    if (!retry) setInput('')
     setWaiting(true)
     try {
       const reply = await ask(token, question)
       setMessages((m) => [...m, { role: 'assistant', reply }])
     } catch (err) {
-      setMessages((m) => [...m, { role: 'error', text: err.message }])
+      if (err.status === 404) setInactive(true)
+      const retryWith = RETRYABLE.includes(err.status) ? question : null
+      setMessages((m) => [...m, { role: 'error', text: err.message, retryWith }])
     }
     setWaiting(false)
   }
 
+  if (inactive) {
+    return (
+      <main className="grid min-h-dvh place-items-center px-4 text-center">
+        <title>Assistant · KnowPilot</title>
+        <p className="text-muted">This assistant link is not active</p>
+      </main>
+    )
+  }
+
+  const orgName = info?.org_name ?? ''
+  const suggestions = info?.suggested_questions ?? []
+
   return (
     <div className="flex h-dvh flex-col">
-      <title>{`${ORG_NAME} Assistant`}</title>
+      <title>{`${orgName} Assistant`.trim()}</title>
       <header className="border-b border-line bg-surface">
         <div className="mx-auto max-w-2xl px-4 py-3">
-          <h1 className="font-display text-lg font-semibold leading-tight">{ORG_NAME} Assistant</h1>
+          <h1 className="font-display text-lg font-semibold leading-tight">{orgName} Assistant</h1>
           <p className="mt-1 flex gap-1.5 text-xs leading-snug text-muted">
             <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="mt-px size-3.5 shrink-0">
               <rect x="3" y="7" width="10" height="7" rx="1.5" />
@@ -208,10 +258,10 @@ export default function ChatPage() {
           {messages.length === 0 && (
             <div className="py-4">
               <p className="text-muted">
-                Ask about anything in {ORG_NAME}’s documents, in English, Hindi or Hinglish.
+                Ask about anything in {orgName ? `${orgName}’s` : 'these'} documents, in English, Hindi or Hinglish.
               </p>
               <div className="mt-4 flex flex-col items-start gap-2">
-                {SUGGESTIONS.map((q) => (
+                {suggestions.map((q) => (
                   <button
                     key={q}
                     type="button"
@@ -236,9 +286,15 @@ export default function ChatPage() {
             ) : m.role === 'assistant' ? (
               <AssistantMessage key={i} reply={m.reply} />
             ) : (
-              <p key={i} className="w-fit max-w-[92%] rounded-2xl rounded-tl-md bg-bad/10 px-4 py-2.5 text-sm text-bad">
-                {m.text}
-              </p>
+              <div key={i} className="flex w-fit max-w-[92%] flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl rounded-tl-md bg-bad/10 px-4 py-2.5 text-sm text-bad">
+                <span>{m.text}</span>
+                {m.retryWith && i === messages.length - 1 && (
+                  <button type="button" disabled={waiting} onClick={() => send(m.retryWith, true)}
+                    className="rounded-md border border-bad/40 px-2.5 py-1 font-medium hover:bg-bad/10">
+                    Retry
+                  </button>
+                )}
+              </div>
             ),
           )}
           {waiting && <Typing />}
@@ -260,6 +316,7 @@ export default function ChatPage() {
             aria-label="Your question"
             enterKeyHint="send"
             autoComplete="off"
+            maxLength={1000}
             className="input flex-1 rounded-full px-4"
           />
           <button
