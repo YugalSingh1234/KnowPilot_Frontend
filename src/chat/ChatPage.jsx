@@ -186,6 +186,7 @@ export default function ChatPage() {
   const [waiting, setWaiting] = useState(false)
   const [info, setInfo] = useState(null) // {org_name, suggested_questions}
   const [inactive, setInactive] = useState(false)
+  const [faq, setFaq] = useState(false) // header FAQ button re-opens the welcome panel
   const log = useRef(null)
 
   useEffect(() => {
@@ -199,12 +200,13 @@ export default function ChatPage() {
     if (!log.current) return
     // Scroll only the conversation, never the page around an embed.
     log.current.scrollTop = log.current.scrollHeight
-  }, [messages, waiting])
+  }, [messages, waiting, faq])
 
   // retry: re-ask after an error without repeating the user's bubble
   async function send(text, retry = false) {
     const question = text.trim()
     if (!question || waiting) return
+    setFaq(false)
     setMessages((m) => (retry ? m.slice(0, -1) : [...m, { role: 'user', text: question }]))
     if (!retry) setInput('')
     setWaiting(true)
@@ -231,11 +233,50 @@ export default function ChatPage() {
   const orgName = info?.org_name ?? ''
   const suggestions = info?.suggested_questions ?? []
 
+  const welcome = (messages.length === 0 || faq) && (
+    <div className="rounded-2xl border border-line bg-surface p-5">
+      <div className="text-center">
+        <span className="mx-auto grid size-12 place-items-center rounded-full bg-accent/10 text-accent-ink">
+          <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+            strokeLinecap="round" strokeLinejoin="round" className="size-6">
+            <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+          </svg>
+        </span>
+        <h2 className="mt-3 font-display text-xl font-semibold">{orgName || 'Welcome'}</h2>
+        <p className="mt-1 text-muted">Ask me about this organization’s policies</p>
+        <p className="mt-1 text-xs text-muted">English, Hindi or Hinglish</p>
+      </div>
+      {suggestions.length > 0 && (
+        <>
+          <h3 className="mt-6 text-sm font-semibold">Frequently asked questions</h3>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {suggestions.map((q) => (
+              <button
+                key={q}
+                type="button"
+                disabled={waiting}
+                onClick={() => {
+                  send(q)
+                  log.current.focus() // the card disappears; keep focus off <body> without popping the keyboard
+                }}
+                className="min-h-11 rounded-xl border border-line bg-paper px-3.5 py-2.5 text-left text-sm transition-colors hover:enabled:border-accent-ink/60 hover:enabled:bg-accent/5"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="chat-bg flex h-dvh flex-col sm:p-4">
       <title>{`${orgName} Assistant`.trim()}</title>
+      <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden bg-paper sm:rounded-2xl sm:border sm:border-line sm:shadow-lg">
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto max-w-2xl px-4 py-3">
+        <div className="flex items-start gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
           <h1 className="font-display text-lg font-semibold leading-tight">{orgName} Assistant</h1>
           <p className="mt-1 flex gap-1.5 text-xs leading-snug text-muted">
             <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="mt-px size-3.5 shrink-0">
@@ -244,6 +285,13 @@ export default function ChatPage() {
             </svg>
             <span>Answers come only from this organization’s documents. Details you type are not stored.</span>
           </p>
+          </div>
+          {messages.length > 0 && suggestions.length > 0 && (
+            <button type="button" aria-pressed={faq} onClick={() => setFaq((f) => !f)}
+              className="btn btn-quiet h-9 shrink-0 border border-line px-3 aria-pressed:bg-fill">
+              FAQ
+            </button>
+          )}
         </div>
       </header>
 
@@ -254,30 +302,7 @@ export default function ChatPage() {
         tabIndex={-1}
         className="flex-1 overflow-y-auto outline-none motion-safe:scroll-smooth"
       >
-        <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
-          {messages.length === 0 && (
-            <div className="py-4">
-              <p className="text-muted">
-                Ask about anything in {orgName ? `${orgName}’s` : 'these'} documents, in English, Hindi or Hinglish.
-              </p>
-              <div className="mt-4 flex flex-col items-start gap-2">
-                {suggestions.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => {
-                      send(q)
-                      log.current.focus() // the chip disappears; keep focus off <body> without popping the keyboard
-                    }}
-                    className="rounded-2xl border border-line bg-surface px-3.5 py-2 text-left text-sm hover:border-accent-ink/60"
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
+        <div className="space-y-4 px-4 py-5">
           {messages.map((m, i) =>
             m.role === 'user' ? (
               <p key={i} className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-tr-md bg-accent px-4 py-2.5 whitespace-pre-line text-white wrap-anywhere">
@@ -298,6 +323,7 @@ export default function ChatPage() {
             ),
           )}
           {waiting && <Typing />}
+          {welcome}
         </div>
       </div>
 
@@ -308,7 +334,7 @@ export default function ChatPage() {
         }}
         className="border-t border-line bg-surface"
       >
-        <div className="mx-auto flex max-w-2xl gap-2 px-4 pt-3">
+        <div className="flex gap-2 px-4 pt-3">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -333,6 +359,7 @@ export default function ChatPage() {
         </div>
         <p className="py-2 text-center text-[11px] text-muted">Powered by KnowPilot</p>
       </form>
+      </div>
     </div>
   )
 }

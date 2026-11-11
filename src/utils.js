@@ -48,3 +48,20 @@ export function checkPdf(file, maxMb) {
   }
   return null
 }
+
+// Onboarding checklist flags (Overview). Browser-only: the API has no field for them.
+export const markStep = (step) => {
+  try {
+    localStorage.setItem(`kp_step_${step}`, '1')
+  } catch {
+    // storage blocked: the step just stays unticked
+  }
+}
+
+export const stepDone = (step) => {
+  try {
+    return localStorage.getItem(`kp_step_${step}`) === '1'
+  } catch {
+    return false
+  }
+}

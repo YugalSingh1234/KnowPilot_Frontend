@@ -18,6 +18,17 @@ const COPY = {
   },
 }
 
+const DEMOS = [
+  ['Navodaya Institute', 'admin@navodaya.test'],
+  ['Navyug Infotech', 'hr@navyug.test'],
+]
+
+const BENEFITS = [
+  ['M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 18v-6M9.5 14.5 12 12l2.5 2.5', 'Upload up to 10 PDFs: policies, fees, prospectus'],
+  ['M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z', 'Visitors ask in English, Hindi or Hinglish'],
+  ['M9 12l2 2 4-4M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z', 'Every answer cites the file and page'],
+]
+
 function Field({ label, name, error, ...props }) {
   return (
     <label className="block">
@@ -53,8 +64,7 @@ export default function AuthPage({ mode }) {
     if (submitted) setErrors(validateAuth(next, mode))
   }
 
-  async function onSubmit(e) {
-    e.preventDefault()
+  async function submit(values) {
     const found = validateAuth(values, mode)
     setErrors(found)
     setSubmitted(true)
@@ -77,19 +87,44 @@ export default function AuthPage({ mode }) {
     }
   }
 
-  return (
-    <main className="grid min-h-dvh place-items-center px-4 py-10">
-      <title>{`${copy.title} · KnowPilot`}</title>
-      <div className="w-full max-w-sm">
-        <div className="mb-8">
-          <div className="flex items-center gap-2.5">
-            <img src="/favicon.svg" alt="" className="size-8" />
-            <span className="font-display text-2xl font-bold tracking-tight">KnowPilot</span>
-          </div>
-          <p className="mt-2 text-sm text-muted">Answers from your own PDFs, with page references.</p>
-        </div>
+  function onSubmit(e) {
+    e.preventDefault()
+    submit(values)
+  }
 
-        <form onSubmit={onSubmit} noValidate className="panel space-y-5 p-6 sm:p-8">
+  function tryDemo(account) {
+    const next = { org_name: '', ...account }
+    setValues(next)
+    submit(next)
+  }
+
+  return (
+    <main className="grid min-h-dvh lg:grid-cols-2">
+      <title>{`${copy.title} · KnowPilot`}</title>
+      <aside className="brand-panel flex flex-col justify-center px-6 py-8 text-white sm:px-12 lg:px-16">
+        <div className="flex items-center gap-2.5">
+          <img src="/favicon.svg" alt="" className="size-9 rounded-lg bg-white p-1" />
+          <span className="font-display text-2xl font-bold tracking-tight">KnowPilot</span>
+        </div>
+        <p className="mt-6 max-w-md font-display text-3xl leading-tight font-semibold text-balance sm:text-4xl">
+          Turn your PDFs into an AI assistant
+        </p>
+        <ul className="mt-8 hidden space-y-4 text-white/85 sm:block">
+          {BENEFITS.map(([d, text]) => (
+            <li key={text} className="flex items-start gap-3">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/10">
+                <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
+                  strokeLinecap="round" strokeLinejoin="round" className="size-4.5"><path d={d} /></svg>
+              </span>
+              <span className="pt-1.5">{text}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      <div className="flex flex-col items-center justify-center px-4 py-10">
+        <div className="w-full max-w-sm">
+        <form onSubmit={onSubmit} noValidate className="panel space-y-5 p-6 shadow-sm sm:p-8">
           <h1 className="font-display text-xl font-semibold leading-snug">{copy.title}</h1>
           {mode === 'register' && (
             <Field
@@ -131,12 +166,28 @@ export default function AuthPage({ mode }) {
           </button>
         </form>
 
+        {mode === 'login' && (
+          <div className="mt-5 rounded-2xl border border-dashed border-line p-4">
+            <p className="text-sm font-semibold">Demo accounts (MVP)</p>
+            <div className="mt-3 grid gap-2">
+              {DEMOS.map(([name, email]) => (
+                <button key={email} type="button" disabled={busy} onClick={() => tryDemo({ email, password: 'Demo@12345' })}
+                  className="btn h-auto min-h-11 flex-col items-start gap-0 border border-line bg-surface py-2 text-left hover:enabled:border-accent-ink/60">
+                  <span>{name}</span>
+                  <span className="text-xs font-normal text-muted">{email}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <p className="mt-6 text-center text-sm text-muted">
           {copy.switch[0]}{' '}
           <Link to={copy.switch[2]} className="font-semibold text-accent-ink hover:underline">
             {copy.switch[1]}
           </Link>
         </p>
+        </div>
       </div>
     </main>
   )

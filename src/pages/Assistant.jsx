@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
+import { markStep } from '../utils.js'
 
-function CopyButton({ text }) {
+function CopyButton({ text, onCopy }) {
   const [copied, setCopied] = useState(false)
   async function copy() {
     await navigator.clipboard.writeText(text)
     setCopied(true)
+    onCopy?.()
     setTimeout(() => setCopied(false), 2000)
   }
   return (
@@ -39,17 +41,16 @@ export default function Assistant() {
 
   return (
     <div className="panel p-5 sm:p-6">
-      <h2 className="font-display text-lg font-semibold">Assistant</h2>
       {error && <p role="alert" className="mt-3 rounded-lg bg-bad/10 px-3 py-2.5 text-sm text-bad">{error}</p>}
       {!data ? (
-        !error && <p className="mt-1.5 text-sm text-muted">Loading…</p>
+        !error && <p className="text-sm text-muted">Loading…</p>
       ) : (
         <>
-          <p className="mt-4 text-sm font-medium">Public link</p>
+          <p className="text-sm font-medium">Public link</p>
           <p className="mt-1 rounded-lg bg-fill px-3 py-2 text-sm wrap-anywhere">{data.assistant_url}</p>
           <div className="mt-2 flex gap-2">
             <CopyButton text={data.assistant_url} />
-            <a href={data.assistant_url} target="_blank" rel="noreferrer" className="btn btn-quiet h-9 border border-line px-3">
+            <a href={data.assistant_url} onClick={() => markStep('opened')} target="_blank" rel="noreferrer" className="btn btn-quiet h-9 border border-line px-3">
               Open
             </a>
           </div>
@@ -59,7 +60,7 @@ export default function Assistant() {
             {data.embed_code}
           </pre>
           <div className="mt-2">
-            <CopyButton text={data.embed_code} />
+            <CopyButton text={data.embed_code} onCopy={() => markStep('embedded')} />
           </div>
 
           <button type="button" onClick={() => dialog.current.showModal()} className="mt-5 text-sm font-medium text-bad hover:underline">

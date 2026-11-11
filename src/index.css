@@ -92,3 +92,18 @@
     @apply rounded-2xl border border-line bg-surface;
   }
 }
+
+@layer components {
+  /* Deep indigo brand block with a faint dot grid; stays indigo in both modes. */
+  .brand-panel {
+    background-color: #2e2a8c;
+    background-image: radial-gradient(rgb(255 255 255 / 0.14) 1px, transparent 1px);
+    background-size: 20px 20px;
+    @apply text-white;
+  }
+  /* Soft tinted backdrop behind the public chat card. */
+  .chat-bg {
+    background-image: radial-gradient(color-mix(in oklab, var(--accent-ink) 14%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+}

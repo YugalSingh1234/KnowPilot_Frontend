@@ -8,6 +8,13 @@ const STATUS = {
   failed: ['Failed', 'bg-bad/10 text-bad'],
 }
 
+const ROW = {
+  waiting: ['Waiting', 'text-muted'],
+  uploading: ['Uploading…', 'text-accent-ink'],
+  ready: ['Ready', 'text-ok'],
+  error: ['Error', 'text-bad'],
+}
+
 function StatusBadge({ status }) {
   const [label, tone] = STATUS[status] ?? [status, 'bg-fill text-muted']
   return (
@@ -32,7 +39,7 @@ export default function KnowledgeBase() {
   const [data, setData] = useState(null) // GET /api/documents: {documents, limits}
   const [unavailable, setUnavailable] = useState(false)
   const [error, setError] = useState('')
-  const [uploading, setUploading] = useState(null) // filename being processed
+  const [queue, setQueue] = useState([]) // this batch's upload rows
   const [dragging, setDragging] = useState(false)
   const [doomed, setDoomed] = useState(null) // document waiting for delete confirmation
   const [deleting, setDeleting] = useState(false)
@@ -47,23 +54,32 @@ export default function KnowledgeBase() {
   }, [reloads])
   const load = () => setReloads((n) => n + 1)
 
+  // Files go up one after another; each gets its own row (waiting / uploading / ready / error).
   async function upload(files) {
-    if (!files.length || uploading) return
+    if (!files.length || busy) return
     setError('')
-    if (files.length > 1) return setError('Upload one PDF at a time.')
-    const problem = checkPdf(files[0], data.limits.max_mb)
-    if (problem) return setError(problem)
-
-    const form = new FormData()
-    form.append('file', files[0])
-    setUploading(files[0].name)
-    try {
-      await api('/api/documents', { method: 'POST', body: form, auth: true })
-    } catch (err) {
-      setError(err.message)
+    const { max_documents, used_documents, max_mb } = data.limits
+    let room = max_documents - used_documents
+    const rows = files.map((f) => {
+      let msg = checkPdf(f, max_mb)
+      if (!msg && room-- <= 0) msg = `You already have ${max_documents} of ${max_documents} documents. Delete one first.`
+      return { name: f.name, state: msg ? 'error' : 'waiting', msg }
+    })
+    const set = (i, patch) => setQueue((q) => q.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+    setQueue(rows)
+    for (const [i, file] of files.entries()) {
+      if (rows[i].state !== 'waiting') continue
+      set(i, { state: 'uploading' })
+      const form = new FormData()
+      form.append('file', file)
+      try {
+        await api('/api/documents', { method: 'POST', body: form, auth: true })
+        set(i, { state: 'ready' })
+      } catch (err) {
+        set(i, { state: 'error', msg: err.message })
+      }
+      load() // also picks up a document the server kept as "failed"
     }
-    setUploading(null)
-    load() // also picks up a document the server kept as "failed"
   }
 
   function askDelete(doc) {
@@ -84,23 +100,22 @@ export default function KnowledgeBase() {
     load()
   }
 
+  const busy = queue.some((r) => r.state === 'waiting' || r.state === 'uploading')
   const limits = data?.limits
   const docs = data?.documents ?? []
 
   if (unavailable) {
     return (
       <div className="panel p-5 sm:p-6">
-        <h2 className="font-display text-lg font-semibold">Knowledge base</h2>
-        <p className="mt-1.5 text-sm text-muted">Coming soon</p>
+        <p className="text-sm text-muted">Coming soon</p>
       </div>
     )
   }
 
   return (
     <div className="panel p-5 sm:p-6">
-      <h2 className="font-display text-lg font-semibold">Knowledge base</h2>
       {limits && (
-        <p className="mt-1 text-sm text-pretty text-muted">
+        <p className="text-sm text-pretty text-muted">
           {limits.used_documents} / {limits.max_documents} documents · max {limits.max_pages} pages ·{' '}
           {limits.max_mb} MB per PDF
         </p>
@@ -110,7 +125,7 @@ export default function KnowledgeBase() {
         <label
           onDragOver={(e) => {
             e.preventDefault()
-            if (!uploading) setDragging(true)
+            if (!busy) setDragging(true)
           }}
           onDragLeave={(e) => {
             if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false)
@@ -121,7 +136,7 @@ export default function KnowledgeBase() {
             upload([...e.dataTransfer.files])
           }}
           className={`mt-5 flex flex-col items-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent-ink ${
-            uploading
+            busy
               ? 'cursor-progress border-line bg-fill'
               : dragging
                 ? 'cursor-copy border-accent-ink bg-accent/5'
@@ -131,32 +146,47 @@ export default function KnowledgeBase() {
           <input
             type="file"
             accept=".pdf,application/pdf"
+            multiple
             className="sr-only"
-            disabled={Boolean(uploading)}
+            disabled={busy}
             onChange={(e) => {
               const files = [...e.target.files]
               e.target.value = '' // lets the same file be picked again after an error
               upload(files)
             }}
           />
-          {uploading ? (
+          {busy ? (
             <span role="status" className="flex flex-col items-center">
               <span aria-hidden className="size-7 rounded-full border-2 border-accent-ink border-t-transparent motion-safe:animate-spin" />
               <span className="mt-3 font-semibold">Processing…</span>
               <span className="mt-1 text-sm text-muted wrap-anywhere">
-                Reading and indexing {uploading}. This can take up to a minute.
+                Reading and indexing your PDFs. Each one can take up to a minute.
               </span>
             </span>
           ) : (
             <>
               <UploadIcon />
               <span className="mt-3 font-semibold">
-                Drop a PDF here or <span className="text-accent-ink underline underline-offset-2">choose a file</span>
+                Drop PDFs here or <span className="text-accent-ink underline underline-offset-2">choose files</span>
               </span>
               <span className="mt-1 text-sm text-muted">Text-based PDFs only. Scanned images can’t be read.</span>
             </>
           )}
         </label>
+      )}
+
+      {queue.length > 0 && (
+        <ul aria-live="polite" className="mt-4 divide-y divide-line rounded-xl border border-line text-sm">
+          {queue.map((r, i) => (
+            <li key={i} className="flex items-start gap-3 px-3 py-2.5">
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium wrap-anywhere">{r.name}</span>
+                {r.msg && <span className="mt-0.5 block text-bad">{r.msg}</span>}
+              </span>
+              <span className={`shrink-0 text-xs font-medium ${ROW[r.state][1]}`}>{ROW[r.state][0]}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {error && (

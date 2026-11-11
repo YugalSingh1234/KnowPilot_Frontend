@@ -46,13 +46,12 @@ export default function Usage() {
 
   return (
     <div className="panel p-5 sm:p-6">
-      <h2 className="font-display text-lg font-semibold">Usage</h2>
       {error && <p role="alert" className="mt-3 rounded-lg bg-bad/10 px-3 py-2.5 text-sm text-bad">{error}</p>}
       {!data ? (
-        !error && <p className="mt-1.5 text-sm text-muted">Loading…</p>
+        !error && <p className="text-sm text-muted">Loading…</p>
       ) : (
         <>
-          <dl className="mt-4 grid grid-cols-2 gap-3">
+          <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {cards.map(([name, n]) => (
               <div key={name} className="rounded-xl bg-fill px-3 py-2.5">
                 <dt className="text-xs text-muted">{name}</dt>
