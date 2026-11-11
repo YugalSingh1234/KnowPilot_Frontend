@@ -20,6 +20,44 @@ const show = (v) => (typeof v === 'number' ? v.toLocaleString('en-IN') : v)
 
 const cite = (ref) => `${ref.filename} — Page ${ref.page}`
 
+// "answerability_gate" -> "Answerability gate"
+const stepName = (id) => (id[0].toUpperCase() + id.slice(1)).replaceAll('_', ' ')
+
+// **bold** only. Text stays React children, so React escapes it: no HTML from the answer is ever parsed.
+const inline = (line) => line.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <strong key={i}>{part}</strong> : part))
+
+// Answer text: "- " / "• " / "* " bullet runs become a list; other lines keep their line breaks.
+function Markdown({ text }) {
+  const blocks = []
+  for (const line of text.split('\n')) {
+    const item = line.match(/^\s*(?:[-•*])\s+(.*)/)
+    const last = blocks.at(-1)
+    if (item) {
+      if (last?.list) last.lines.push(item[1])
+      else blocks.push({ list: true, lines: [item[1]] })
+    } else if (line.trim()) {
+      if (last && !last.list && !last.gap) last.lines.push(line)
+      else blocks.push({ list: false, lines: [line] })
+    } else if (last) last.gap = true // blank line ends the paragraph
+  }
+  return blocks.map((b, i) =>
+    b.list ? (
+      <ul key={i} className="list-disc space-y-1 pl-5">
+        {b.lines.map((l, j) => <li key={j}>{inline(l)}</li>)}
+      </ul>
+    ) : (
+      <p key={i}>
+        {b.lines.map((l, j) => (
+          <span key={j}>
+            {j > 0 && <br />}
+            {inline(l)}
+          </span>
+        ))}
+      </p>
+    ),
+  )
+}
+
 function Chevron() {
   return (
     <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -109,10 +147,13 @@ function Steps({ trace }) {
       </summary>
       <ol className="space-y-1 px-4 pb-3 text-xs text-muted">
         {trace.map((t, i) => (
-          <li key={i} className="flex items-center gap-3">
-            <span className="flex-1 wrap-anywhere">{t.step}</span>
-            <span className="rounded bg-fill px-1.5 py-0.5">{KINDS[t.kind] ?? t.kind}</span>
-            <span className="w-16 text-right tabular-nums">{Math.round(t.ms)} ms</span>
+          <li key={i}>
+            <div className="flex items-center gap-3">
+              <span className="flex-1 text-ink wrap-anywhere">{stepName(t.step)}</span>
+              <span className="rounded bg-fill px-1.5 py-0.5">{KINDS[t.kind] ?? t.kind}</span>
+              <span className="w-16 text-right tabular-nums">{t.ms < 10 ? t.ms.toFixed(1) : Math.round(t.ms)} ms</span>
+            </div>
+            {t.summary && <p className="mt-0.5 wrap-anywhere">{t.summary}</p>}
           </li>
         ))}
       </ol>
@@ -129,22 +170,17 @@ function AssistantMessage({ reply }) {
         className={`overflow-hidden rounded-2xl rounded-tl-md border bg-surface ${noAnswer ? 'border-dashed border-muted/50' : 'border-line'}`}
       >
         {decision && <Verdict decision={decision} />}
-        {noAnswer && (
-          <span className="mx-4 mt-3 inline-block rounded-full bg-fill px-2.5 py-0.5 text-xs font-medium text-muted">
-            Not in documents
-          </span>
-        )}
         {reply.status === 'passages_only' && (
           <p className="border-l-4 border-warn bg-warn/10 px-4 py-2 text-sm font-medium text-warn">
             AI busy, showing relevant passages
           </p>
         )}
-        <p
+        <div
           lang={reply.language === 'hi' ? 'hi' : 'en'}
-          className={`px-4 py-3 leading-relaxed whitespace-pre-line ${noAnswer ? 'text-muted' : ''}`}
+          className={`space-y-2 px-4 py-3 leading-relaxed ${noAnswer ? 'text-muted' : ''}`}
         >
-          {reply.answer}
-        </p>
+          <Markdown text={reply.answer} />
+        </div>
         {decision?.missing_facts.length > 0 && (
           <div className="px-4 pb-3 text-sm">
             <p className="font-medium">To decide, I also need:</p>
