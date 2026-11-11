@@ -190,7 +190,7 @@ export default function KnowledgeBase() {
       )}
 
       {error && (
-        <p role="alert" className="mt-4 rounded-lg bg-bad/10 px-3 py-2.5 text-sm text-bad">
+        <p role="alert" className="alert mt-4">
           {error}
         </p>
       )}
@@ -209,7 +209,6 @@ export default function KnowledgeBase() {
                 <th scope="col" className="py-2 pr-3 font-medium">File</th>
                 <th scope="col" className="hidden px-3 py-2 text-right font-medium sm:table-cell">Pages</th>
                 <th scope="col" className="hidden px-3 py-2 text-right font-medium sm:table-cell">Size</th>
-                <th scope="col" className="hidden px-3 py-2 text-right font-medium sm:table-cell">Chunks</th>
                 <th scope="col" className="hidden px-3 py-2 font-medium sm:table-cell">Status</th>
                 <th scope="col" className="hidden px-3 py-2 font-medium sm:table-cell">Uploaded</th>
                 <th scope="col" className="py-2 pl-3"><span className="sr-only">Actions</span></th>
@@ -224,7 +223,7 @@ export default function KnowledgeBase() {
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted sm:hidden">
                       <StatusBadge status={d.status} />
                       <span>
-                        {d.page_count} pages · {mb(d.size_bytes)} MB · {d.chunk_count} chunks · {ddmmyyyy(d.created_at)}
+                        {d.page_count} pages · {mb(d.size_bytes)} MB · {ddmmyyyy(d.created_at)}
                       </span>
                     </div>
                   </td>
@@ -232,7 +231,6 @@ export default function KnowledgeBase() {
                   <td className="hidden px-3 py-3 text-right whitespace-nowrap tabular-nums sm:table-cell">
                     {mb(d.size_bytes)} MB
                   </td>
-                  <td className="hidden px-3 py-3 text-right tabular-nums sm:table-cell">{d.chunk_count}</td>
                   <td className="hidden px-3 py-3 sm:table-cell">
                     <StatusBadge status={d.status} />
                   </td>

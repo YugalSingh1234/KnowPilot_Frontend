@@ -5,7 +5,7 @@ import { markStep } from '../utils.js'
 function CopyButton({ text, onCopy }) {
   const [copied, setCopied] = useState(false)
   async function copy() {
-    await navigator.clipboard.writeText(text)
+    try { await navigator.clipboard.writeText(text) } catch { return }
     setCopied(true)
     onCopy?.()
     setTimeout(() => setCopied(false), 2000)
@@ -41,7 +41,7 @@ export default function Assistant() {
 
   return (
     <div className="panel p-5 sm:p-6">
-      {error && <p role="alert" className="mt-3 rounded-lg bg-bad/10 px-3 py-2.5 text-sm text-bad">{error}</p>}
+      {error && <p role="alert" className="alert">{error}</p>}
       {!data ? (
         !error && <p className="text-sm text-muted">Loading…</p>
       ) : (
@@ -52,6 +52,9 @@ export default function Assistant() {
             <CopyButton text={data.assistant_url} />
             <a href={data.assistant_url} onClick={() => markStep('opened')} target="_blank" rel="noreferrer" className="btn btn-quiet h-9 border border-line px-3">
               Open
+            </a>
+            <a href={`${data.assistant_url}?debug=1`} target="_blank" rel="noreferrer" className="btn btn-quiet h-9 px-3 text-muted">
+              Open with processing steps
             </a>
           </div>
 

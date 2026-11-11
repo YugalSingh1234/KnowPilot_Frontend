@@ -9,7 +9,7 @@ import Usage from './Usage.jsx'
 // [id, label, page description, icon path]
 const TABS = [
   ['overview', 'Overview', 'Your setup progress and a quick look at activity.', 'M4 13h6V4H4zM14 20h6v-9h-6zM14 4v3h6V4zM4 20h6v-3H4z'],
-  ['kb', 'Knowledge Base', 'The PDFs your assistant answers from. Upload, check status or delete.', 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4'],
+  ['kb', 'Documents', 'The PDFs your assistant answers from. Upload, check status or delete.', 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4'],
   ['assistant', 'Assistant', 'Share the public link or embed the chat on your website.', 'M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z'],
   ['usage', 'Usage', 'What visitors ask, and how often they get an answer.', 'M4 20V10M10 20V4M16 20v-7M22 20H2'],
 ]

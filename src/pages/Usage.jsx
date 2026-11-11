@@ -46,7 +46,7 @@ export default function Usage() {
 
   return (
     <div className="panel p-5 sm:p-6">
-      {error && <p role="alert" className="mt-3 rounded-lg bg-bad/10 px-3 py-2.5 text-sm text-bad">{error}</p>}
+      {error && <p role="alert" className="alert">{error}</p>}
       {!data ? (
         !error && <p className="text-sm text-muted">Loading…</p>
       ) : (

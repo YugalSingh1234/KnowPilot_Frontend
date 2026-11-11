@@ -4,12 +4,12 @@
    palette colors, so light and dark mode (which follows the OS) both stay correct. */
 :root {
   color-scheme: light;
-  --paper: #f5f5fa;
+  --paper: #f5f5f7;
   --surface: #ffffff;
-  --ink: #1c1b33;
-  --muted: #5f5e78;
-  --line: #e2e1ee;
-  --fill: #eeeef6;
+  --ink: #1d1d1f;
+  --muted: #6e6e73;
+  --line: #e5e5ea;
+  --fill: #efeff2;
   --accent: #3730a3; /* deep indigo: buttons, user bubbles */
   --accent-ink: #3730a3; /* accent-colored text and focus rings */
   --ok: #15803d;
@@ -20,12 +20,12 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --paper: #100f26;
-    --surface: #191838;
-    --ink: #ecebfa;
-    --muted: #a3a2c2;
-    --line: #2c2b52;
-    --fill: #232249;
+    --paper: #0b0b0d;
+    --surface: #1c1c1e;
+    --ink: #f5f5f7;
+    --muted: #98989f;
+    --line: #2c2c2e;
+    --fill: #2a2a2d;
     --accent: #4f46e5;
     --accent-ink: #a5b4fc;
     --ok: #4ade80;
@@ -73,20 +73,20 @@
 
 @layer components {
   .btn {
-    @apply inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
   }
   .btn-primary {
-    @apply bg-accent text-white hover:enabled:bg-accent/90;
+    @apply bg-accent text-white hover:not-disabled:bg-accent/90;
   }
   .btn-quiet {
-    @apply text-ink hover:enabled:bg-fill;
+    @apply text-ink hover:not-disabled:bg-fill;
   }
   .btn-danger {
-    @apply bg-red-700 text-white hover:enabled:bg-red-800;
+    @apply bg-bad text-white hover:enabled:opacity-90;
   }
   /* text-base (16px) keeps iOS from zooming into focused inputs */
   .input {
-    @apply h-11 w-full rounded-lg border border-line bg-surface px-3 text-base text-ink placeholder:text-muted focus-visible:outline-offset-0 aria-[invalid=true]:border-bad;
+    @apply h-11 w-full rounded-xl border border-line bg-surface px-3 text-base text-ink placeholder:text-muted focus-visible:outline-offset-0 aria-[invalid=true]:border-bad;
   }
   .panel {
     @apply rounded-2xl border border-line bg-surface;
@@ -94,16 +94,7 @@
 }
 
 @layer components {
-  /* Deep indigo brand block with a faint dot grid; stays indigo in both modes. */
-  .brand-panel {
-    background-color: #2e2a8c;
-    background-image: radial-gradient(rgb(255 255 255 / 0.14) 1px, transparent 1px);
-    background-size: 20px 20px;
-    @apply text-white;
-  }
-  /* Soft tinted backdrop behind the public chat card. */
-  .chat-bg {
-    background-image: radial-gradient(color-mix(in oklab, var(--accent-ink) 14%, transparent) 1px, transparent 1px);
-    background-size: 22px 22px;
+  .alert {
+    @apply rounded-xl bg-bad/10 px-3 py-2.5 text-sm text-bad;
   }
 }

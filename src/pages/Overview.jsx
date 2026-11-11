@@ -82,7 +82,7 @@ export default function Overview({ go }) {
                 <span className="sr-only">{s.done ? ' (done)' : ''}</span>
               </span>
               <div className="min-w-0 flex-1">
-                <p className={`font-semibold ${s.done ? 'text-muted line-through decoration-1' : ''}`}>{s.title}</p>
+                <p className={`font-semibold ${s.done ? 'text-muted' : ''}`}>{s.title}</p>
                 <p className="text-sm text-muted">{s.text}</p>
               </div>
               <div className="shrink-0">{s.action}</div>
